@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import classNames from 'classnames';
-import { FC, KeyboardEvent, useEffect, useState } from 'react';
+import { FC, FormEvent, KeyboardEvent, useState } from 'react';
 import { Todo } from '../types/Todo';
 
 type Props = {
@@ -19,22 +19,14 @@ export const TodoItem: FC<Props> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(todo.title);
 
-  useEffect(() => {
-    if (!isLoading && isEditing && todo.title === editedTitle.trim()) {
-      setIsEditing(false);
-    }
-  }, [isLoading, todo.title]);
-
   const handleChangeCompleted = () => {
-    const changedTodo = {
+    onChangeTodo?.({
       ...todo,
       completed: !todo.completed,
-    };
-
-    onChangeTodo?.(changedTodo);
+    });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmedTitle = editedTitle.trim();
 
     if (trimmedTitle === '') {
@@ -51,19 +43,22 @@ export const TodoItem: FC<Props> = ({
 
     const updatedTodo = { ...todo, title: trimmedTitle };
 
-    onChangeTodo?.(updatedTodo);
+    try {
+      await onChangeTodo?.(updatedTodo);
+      setIsEditing(false);
+    } catch {}
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      handleSubmit();
-    }
-
+  const handleKeyUp = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
       setIsEditing(false);
       setEditedTitle(todo.title);
     }
+  };
+
+  const onFormSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    handleSubmit();
   };
 
   return (
@@ -82,7 +77,7 @@ export const TodoItem: FC<Props> = ({
       </label>
 
       {isEditing ? (
-        <form>
+        <form onSubmit={onFormSubmit}>
           <input
             data-cy="TodoTitleField"
             type="text"
@@ -91,7 +86,7 @@ export const TodoItem: FC<Props> = ({
             value={editedTitle}
             onChange={event => setEditedTitle(event.target.value)}
             onBlur={handleSubmit}
-            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             autoFocus
           />
         </form>
